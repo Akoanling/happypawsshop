@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Paw Shop - Your Pet's Paradise 🐾</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header/Navigation -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo" id="logoClicker" onclick="goToPage('home')">
+                <span class="logo-icon">🐾</span>
+                <span class="logo-text">Happy Paw Shop</span>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search for pet products..." />
+                <button onclick="searchProducts()"><i class="fas fa-search"></i></button>
+            </div>
+
+            <div class="header-actions">
+                <button class="cart-btn" onclick="goToPage('cart')">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </button>
+                <button id="userBtn" class="user-btn">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- User Popup -->
+    <div id="userPopup" class="user-popup">
+        <div class="popup-header">
+            <h3>Account</h3>
+            <button id="closePopup" class="close-btn"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="userInfo" class="user-info">
+            <div class="not-logged-in">
+                <i class="fas fa-sign-in-alt"></i>
+                <p>You are not logged in</p>
+                <a href="#" id="loginLink">Sign In / Sign Up</a>
+            </div>
+        </div>
+        <div id="userActions" class="user-actions" style="display: none;">
+            <div class="user-details">
+                <div class="user-avatar">👤</div>
+                <div>
+                    <p id="userName" class="user-name"></p>
+                    <p id="userEmail" class="user-email"></p>
+                </div>
+            </div>
+            <div class="popup-menu">
+                <a href="#" class="popup-menu-item" onclick="goToPage('orders')">
+                    <i class="fas fa-box"></i> My Orders
+                </a>
+                <a href="#" class="popup-menu-item" onclick="goToPage('favorites')">
+                    <i class="fas fa-heart"></i> My Favorites
+                </a>
+            </div>
+            <button id="logoutBtn" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- UNIFIED LOGIN/SIGNUP MODAL -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button id="closeAuth" class="modal-close"><i class="fas fa-times"></i></button>
+            
+            <!-- Main Auth Container -->
+            <div class="auth-container">
+                <!-- Customer Section (Center) -->
+                <div class="auth-section customer-section">
+                    <div class="auth-header">
+                        <h2>🐾 Welcome to Happy Paw Shop</h2>
+                        <p>Shop for your beloved pets</p>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="loginForm" class="auth-form active-form">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" placeholder="user@gmail.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="auth-btn">Sign In</button>
+                    </form>
+
+                    <!-- Signup Form -->
+                    <form id="signupForm" class="auth-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="signupName">Full Name</label>
+                            <input type="text" id="signupName" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupEmail">Email Address</label>
+                            <input type="email" id="signupEmail" placeholder="user@gmail.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupPassword">Password</label>
+                            <input type="password" id="signupPassword" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="auth-btn">Create Account</button>
+                    </form>
+
+                    <!-- Tab Switcher -->
+                    <div class="auth-footer">
+                        <p id="switchToSignup" style="display: none;">
+                            Don't have an account? <a href="#">Sign Up</a>
+                        </p>
+                        <p id="switchToLogin" style="display: none;">
+                            Already have an account? <a href="#">Sign In</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Admin Section (Bottom) -->
+                <div class="auth-section admin-section" id="adminLoginSection" style="display: none;">
+                    <div class="admin-login-header">
+                        <i class="fas fa-lock"></i>
+                        <p>Admin Access</p>
+                    </div>
+                    <form id="adminLoginForm" class="auth-form">
+                        <div class="form-group">
+                            <input type="email" id="adminEmail" placeholder="Admin email" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="password" id="adminPassword" placeholder="Admin password" required>
+                        </div>
+                        <button type="submit" class="admin-btn">Admin Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOME PAGE -->
+    <div id="homePage" class="page" style="display: block;">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>🐾 Welcome to Happy Paw Shop!</h1>
+                <p>Everything your pets need to be happy and healthy</p>
+                <button class="hero-cta" onclick="document.querySelector('.categories-grid').scrollIntoView()">Start Shopping</button>
+            </div>
+        </section>
+
+        <section class="categories">
+            <h2>Shop by Pet Type</h2>
+            <div class="categories-grid">
+                <div class="category-card" data-category="dogs"><div class="category-icon">🐕</div><h3>Dogs</h3></div>
+                <div class="category-card" data-category="cats"><div class="category-icon">🐈</div><h3>Cats</h3></div>
+                <div class="category-card" data-category="birds"><div class="category-icon">🦜</div><h3>Birds</h3></div>
+                <div class="category-card" data-category="fish"><div class="category-icon">🐠</div><h3>Fish</h3></div>
+                <div class="category-card" data-category="small-pets"><div class="category-icon">🐹</div><h3>Small Pets</h3></div>
+                <div class="category-card" data-category="reptiles"><div class="category-icon">🦎</div><h3>Reptiles</h3></div>
+            </div>
+        </section>
+
+        <section class="filters-section">
+            <div class="filters-container">
+                <h2>All Products</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="dogs">Dogs</button>
+                    <button class="filter-btn" data-filter="cats">Cats</button>
+                    <button class="filter-btn" data-filter="birds">Birds</button>
+                    <button class="filter-btn" data-filter="fish">Fish</button>
+                    <button class="filter-btn" data-filter="small-pets">Small Pets</button>
+                    <button class="filter-btn" data-filter="reptiles">Reptiles</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="products-section">
+            <div id="productsGrid" class="products-grid"></div>
+        </section>
+    </div>
+
+    <!-- CART PAGE -->
+    <div id="cartPage" class="page" style="display: none;">
+        <div class="page-header">
+            <button class="back-btn" onclick="goToPage('home')"><i class="fas fa-arrow-left"></i> Back</button>
+            <h1>🛒 Shopping Cart</h1>
+        </div>
+        <div class="cart-content">
+            <div>
+                <div id="cartEmpty" class="empty-cart" style="display: none;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h2>Your cart is empty</h2>
+                </div>
+                <div id="cartItemsContainer" class="cart-items-wrapper"></div>
+            </div>
+            <div class="cart-summary" id="cartSummary" style="display: none;">
+                <div class="summary-box">
+                    <h3>Order Summary</h3>
+                    <div class="summary-row"><span>Subtotal:</span><span id="subtotal">₱0.00</span></div>
+                    <div class="summary-row"><span>Tax:</span><span id="tax">₱0.00</span></div>
+                    <div class="summary-row"><span>Shipping:</span><span id="shipping">₱5.00</span></div>
+                    <div class="summary-row total"><span>Total:</span><span id="total">₱0.00</span></div>
+                    <button class="btn-checkout" onclick="goToPage('checkout')">Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKOUT PAGE -->
+    <div id="checkoutPage" class="page" style="display: none;">
+        <div class="page-header">
+            <button class="back-btn" onclick="goToPage('cart')"><i class="fas fa-arrow-left"></i> Back</button>
+            <h1>💳 Checkout</h1>
+        </div>
+        <div class="checkout-container">
+            <form id="checkoutForm" class="checkout-form">
+                <fieldset class="form-section">
+                    <legend>📍 Shipping Information</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <input type="text" name="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <input type="text" name="lastName" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address *</label>
+                        <input type="text" name="address" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>City *</label>
+                            <input type="text" name="city" required>
+                        </div>
+                        <div class="form-group">
+                            <label>State *</label>
+                            <input type="text" name="state" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>ZIP Code *</label>
+                            <input type="text" name="zip" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Country *</label>
+                            <input type="text" name="country" required>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="form-section">
+                    <legend>🚚 Shipping Method</legend>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="shipping" value="standard" checked>
+                            <div><strong>Standard Shipping - ₱5.00</strong><p>Delivery in 5-7 business days</p></div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="shipping" value="express">
+                            <div><strong>Express Shipping - ₱15.00</strong><p>Delivery in 2-3 business days</p></div>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="btn-checkout">
+                    <i class="fas fa-check"></i> Place Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION PAGE -->
+    <div id="confirmationPage" class="page" style="display: none;">
+        <div class="page-header">
+            <h1>✅ Order Confirmation</h1>
+        </div>
+        <div class="confirmation-container">
+            <div class="confirmation-card">
+                <i class="fas fa-check-circle" style="font-size: 3rem; color: #FF6B9D; margin-bottom: 1rem;"></i>
+                <h2>Thank you for your order! 🎉</h2>
+                <div class="confirmation-detail">
+                    <span>Order Number:</span>
+                    <strong id="confirmOrderId">#000000</strong>
+                </div>
+                <div class="confirmation-detail">
+                    <span>Order Date:</span>
+                    <strong id="confirmDate">--/--/----</strong>
+                </div>
+                <div class="confirmation-detail">
+                    <span>Items:</span>
+                    <strong id="confirmItems">0</strong>
+                </div>
+                <div class="confirmation-detail total">
+                    <span>Total Amount:</span>
+                    <strong id="confirmTotal">₱0.00</strong>
+                </div>
+                <button class="btn-large" onclick="goToPage('home')">
+                    <i class="fas fa-shopping-bag"></i> Back to Shopping
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ORDERS PAGE -->
+    <div id="ordersPage" class="page" style="display: none;">
+        <div class="page-header">
+            <button class="back-btn" onclick="goToPage('home')"><i class="fas fa-arrow-left"></i> Back</button>
+            <h1>📦 My Orders</h1>
+        </div>
+        <div class="orders-container">
+            <div id="ordersEmpty" class="empty-state" style="display: none;">
+                <h2>No orders yet</h2>
+            </div>
+            <div id="ordersList" class="orders-list"></div>
+        </div>
+    </div>
+
+    <!-- FAVORITES PAGE -->
+    <div id="favoritesPage" class="page" style="display: none;">
+        <div class="page-header">
+            <button class="back-btn" onclick="goToPage('home')"><i class="fas fa-arrow-left"></i> Back</button>
+            <h1>❤️ My Favorites</h1>
+        </div>
+        <div class="favorites-container">
+            <div id="favoritesEmpty" class="empty-state" style="display: none;"><h2>No favorites yet</h2></div>
+            <div id="favoritesGrid" class="products-grid"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 Happy Paw Shop. All rights reserved. 🐾</p>
+    </footer>
+
+    <script src="script.js"></script>
+
+    <script>
+
+// Secret admin reveal
+let logoClicks = 0;
+
+const logo = document.getElementById("logoClicker");
+const adminSection = document.getElementById("adminLoginSection");
+
+if (logo && adminSection) {
+
+    logo.addEventListener("click", () => {
+
+        logoClicks++;
+
+        if (logoClicks === 3) {
+            adminSection.style.display = "block";
+            logoClicks = 0;
+        }
+
+        setTimeout(() => {
+            logoClicks = 0;
+        }, 2000);
+
+    });
+
+}
+
+</script>
+
+    <!-- [FEATURE 1: Add to Home Screen Prompt // Place just before </body>] -->
+<div id="installPrompt" style="display:none; position:fixed;bottom:80px;left:0;right:0;z-index:4000;text-align:center;">
+    <button id="installBtn" style="
+        display:inline-block;
+        background:linear-gradient(90deg,#FF6B9D,#845EC2);
+        color:white; font-size:1.2rem;
+        border:none;border-radius:10px;
+        padding:1rem 2rem;box-shadow:0 4px 24px rgba(0,0,0,.13);
+    ">
+        📱 Add Happy Paw Shop to Home Screen
+    </button>
+</div>
+
+</body>
+</html>

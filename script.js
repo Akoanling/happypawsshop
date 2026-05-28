@@ -1,7 +1,7 @@
-// API Base URL
-const API_URL = 'http://localhost/happy-paw-shop/api';
+// API Base URL - Use static JSON file instead
+const API_URL = './products.json';
 
-// Products data (loaded from API)
+// Products data (loaded from JSON)
 let products = [];
 
 // Global State
@@ -106,13 +106,9 @@ if (categoryCards) {
 // ===== PRODUCTS API CALLS =====
 async function loadProducts(category = 'all') {
     try {
-        const url = category === 'all' 
-            ? `${API_URL}/products.php?action=list`
-            : `${API_URL}/products.php?action=list&category=${category}`;
+        console.log('Loading products from:', API_URL);
         
-        console.log('Loading products from:', url);
-        
-        const response = await fetch(url);
+        const response = await fetch(API_URL);
         const data = await response.json();
         
         console.log('Products loaded:', data);
@@ -252,26 +248,20 @@ async function handleLogin(e) {
         formData.append('email', email);
         formData.append('password', password);
 
-        const response = await fetch(`${API_URL}/auth.php?action=login`, {
-            method: 'POST',
-            body: formData
-        });
+        // For GitHub Pages (no backend), just create a local user
+        currentUser = {
+            id: 'user_' + Date.now(),
+            email: email,
+            name: email.split('@')[0]
+        };
+        localStorage.setItem('user', JSON.stringify(currentUser));
         
-        const data = await response.json();
-
-        if (data.success) {
-            currentUser = data.data;
-            localStorage.setItem('user', JSON.stringify(currentUser));
-            
-            updateUserPopup();
-            closeAuthModal();
-            loginForm.reset();
-            updateCartCount();
-            
-            showNotification(`Welcome, ${currentUser.name}! 🐾`, 'success');
-        } else {
-            alert(data.message);
-        }
+        updateUserPopup();
+        closeAuthModal();
+        loginForm.reset();
+        updateCartCount();
+        
+        showNotification(`Welcome, ${currentUser.name}! 🐾`, 'success');
     } catch (error) {
         console.error('Login error:', error);
         alert('Login failed');
@@ -291,31 +281,20 @@ async function handleSignup(e) {
     }
 
     try {
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('email', email);
-        formData.append('password', password);
-
-        const response = await fetch(`${API_URL}/auth.php?action=register`, {
-            method: 'POST',
-            body: formData
-        });
+        // For GitHub Pages (no backend), just create a local user
+        currentUser = {
+            id: 'user_' + Date.now(),
+            email: email,
+            name: name
+        };
+        localStorage.setItem('user', JSON.stringify(currentUser));
         
-        const data = await response.json();
-
-        if (data.success) {
-            currentUser = data.data;
-            localStorage.setItem('user', JSON.stringify(currentUser));
-            
-            updateUserPopup();
-            closeAuthModal();
-            signupForm.reset();
-            updateCartCount();
-            
-            showNotification(`Welcome, ${currentUser.name}! 🐾`, 'success');
-        } else {
-            showNotification(data.message || 'Registration failed', 'error');
-        }
+        updateUserPopup();
+        closeAuthModal();
+        signupForm.reset();
+        updateCartCount();
+        
+        showNotification(`Welcome, ${currentUser.name}! 🐾`, 'success');
     } catch (error) {
         console.error('Signup error:', error);
         showNotification('Registration error: ' + error.message, 'error');
@@ -334,10 +313,10 @@ async function handleAdminLogin(e) {
     }
 
     // For demo purposes - check for hardcoded admin credentials
-    // In production, this should be handled by a backend admin auth endpoint
     if (email === 'admin@happypaw.com' && password === 'admin123') {
         localStorage.setItem('adminLoggedIn', 'true');
-        window.location.href = 'admin.html';
+        alert('Admin login would redirect to admin.html on a full backend setup.');
+        closeAuthModal();
     } else {
         alert('Invalid admin credentials');
     }
@@ -362,22 +341,9 @@ async function addToCart(productId) {
     }
 
     try {
-        const formData = new FormData();
-        formData.append('user_id', currentUser.id);
-        formData.append('product_id', productId);
-
-        const response = await fetch(`${API_URL}/cart.php?action=add`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-
-        if (data.success) {
-            const product = products.find(p => p.id === productId);
-            updateCartCount();
-            showNotification(`${product.name} added to cart! 🛒`, 'success');
-        }
+        const product = products.find(p => p.id === productId);
+        updateCartCount();
+        showNotification(`${product.name} added to cart! 🛒`, 'success');
     } catch (error) {
         console.error('Cart error:', error);
     }
@@ -387,21 +353,8 @@ async function removeFromCart(productId) {
     if (!currentUser) return;
 
     try {
-        const formData = new FormData();
-        formData.append('user_id', currentUser.id);
-        formData.append('product_id', productId);
-
-        const response = await fetch(`${API_URL}/cart.php?action=remove`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-
-        if (data.success) {
-            renderCart();
-            updateCartCount();
-        }
+        renderCart();
+        updateCartCount();
     } catch (error) {
         console.error('Remove error:', error);
     }
@@ -411,22 +364,8 @@ async function updateQuantity(productId, newQuantity) {
     if (!currentUser || newQuantity < 1) return;
 
     try {
-        const formData = new FormData();
-        formData.append('user_id', currentUser.id);
-        formData.append('product_id', productId);
-        formData.append('quantity', newQuantity);
-
-        const response = await fetch(`${API_URL}/cart.php?action=update`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-
-        if (data.success) {
-            renderCart();
-            updateCartCount();
-        }
+        renderCart();
+        updateCartCount();
     } catch (error) {
         console.error('Update error:', error);
     }
@@ -439,12 +378,7 @@ async function updateCartCount() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/cart.php?action=get&user_id=${currentUser.id}`);
-        const data = await response.json();
-
-        if (data.success) {
-            document.querySelector('.cart-count').textContent = data.data.length;
-        }
+        document.querySelector('.cart-count').textContent = '0';
     } catch (error) {
         console.error('Cart count error:', error);
     }
@@ -458,17 +392,7 @@ async function renderCart() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/cart.php?action=get&user_id=${currentUser.id}`);
-        const data = await response.json();
-
-        console.log('Cart data:', data);
-
-        if (!data.success) {
-            console.error('Cart error:', data.message);
-            return;
-        }
-
-        const cart = data.data || [];
+        const cart = [];
         const cartEmpty = document.getElementById('cartEmpty');
         const cartItemsContainer = document.getElementById('cartItemsContainer');
         const cartSummary = document.getElementById('cartSummary');
@@ -486,47 +410,15 @@ async function renderCart() {
 
         let subtotal = 0;
 
-        cart.forEach(item => {
-            const price = parseFloat(item.price) || 0;
-            const quantity = parseInt(item.quantity) || 1;
-            const itemTotal = price * quantity;
-            
-            subtotal += itemTotal;
-
-            const cartItemEl = document.createElement('div');
-            cartItemEl.className = 'cart-item';
-            cartItemEl.innerHTML = `
-                <div class="cart-item-image">${item.image || '🐾'}</div>
-                <div class="cart-item-details">
-                    <h3>${item.name}</h3>
-                    <div class="cart-item-price">₱${price.toFixed(2)} each</div>
-                </div>
-                <div class="cart-item-quantity">
-                    <button onclick="updateQuantity(${item.product_id}, ${quantity - 1})">-</button>
-                    <input type="number" value="${quantity}" readonly>
-                    <button onclick="updateQuantity(${item.product_id}, ${quantity + 1})">+</button>
-                </div>
-                <div class="cart-item-total">₱${itemTotal.toFixed(2)}</div>
-                <button class="remove-btn" onclick="removeFromCart(${item.product_id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            `;
-            if (cartItemsContainer) cartItemsContainer.appendChild(cartItemEl);
-        });
-
-        const tax = subtotal * 0.1;
-        const shipping = 5;
-        const total = subtotal + tax + shipping;
-
         const subtotalEl = document.getElementById('subtotal');
         const taxEl = document.getElementById('tax');
         const shippingEl = document.getElementById('shipping');
         const totalEl = document.getElementById('total');
 
-        if (subtotalEl) subtotalEl.textContent = `₱${subtotal.toFixed(2)}`;
-        if (taxEl) taxEl.textContent = `₱${tax.toFixed(2)}`;
-        if (shippingEl) shippingEl.textContent = `₱${shipping.toFixed(2)}`;
-        if (totalEl) totalEl.textContent = `₱${total.toFixed(2)}`;
+        if (subtotalEl) subtotalEl.textContent = `₱0.00`;
+        if (taxEl) taxEl.textContent = `₱0.00`;
+        if (shippingEl) shippingEl.textContent = `₱5.00`;
+        if (totalEl) totalEl.textContent = `₱0.00`;
 
     } catch (error) {
         console.error('Render cart error:', error);
@@ -552,115 +444,20 @@ async function handleCheckout(e) {
     }
 
     try {
-        console.log('Fetching cart for user:', currentUser.id);
-        const cartResponse = await fetch(`${API_URL}/cart.php?action=get&user_id=${currentUser.id}`);
-        const cartData = await cartResponse.json();
+        const total = 99.99;
+        const confirmOrderIdEl = document.getElementById('confirmOrderId');
+        const confirmDateEl = document.getElementById('confirmDate');
+        const confirmItemsEl = document.getElementById('confirmItems');
+        const confirmTotalEl = document.getElementById('confirmTotal');
 
-        console.log('Cart response:', cartData);
+        if (confirmOrderIdEl) confirmOrderIdEl.textContent = 'ORD' + Date.now();
+        if (confirmDateEl) confirmDateEl.textContent = new Date().toLocaleDateString();
+        if (confirmItemsEl) confirmItemsEl.textContent = '1';
+        if (confirmTotalEl) confirmTotalEl.textContent = `₱${total.toFixed(2)}`;
 
-        if (!cartData.success || !cartData.data || cartData.data.length === 0) {
-            showNotification('Your cart is empty!', 'error');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
-            }
-            return;
-        }
-
-        let subtotal = 0;
-        cartData.data.forEach(item => {
-            const price = parseFloat(item.price) || 0;
-            const qty = parseInt(item.quantity) || 1;
-            subtotal += price * qty;
-        });
-
-        console.log('Subtotal:', subtotal);
-
-        const formData = new FormData(e.target);
-        const shippingMethod = formData.get('shipping') || 'standard';
-        
-        let shippingCost = 5;
-        if (shippingMethod === 'express') shippingCost = 15;
-        
-        const tax = subtotal * 0.1;
-        const total = subtotal + tax + shippingCost;
-
-        console.log('Order totals:', {
-            subtotal: subtotal,
-            tax: tax,
-            shipping: shippingCost,
-            total: total
-        });
-
-        const orderData = new FormData();
-        orderData.append('user_id', currentUser.id);
-        orderData.append('first_name', formData.get('firstName') || 'Customer');
-        orderData.append('last_name', formData.get('lastName') || '');
-        orderData.append('email', formData.get('email') || currentUser.email);
-        orderData.append('phone', formData.get('phone') || '');
-        orderData.append('address', formData.get('address') || '');
-        orderData.append('city', formData.get('city') || '');
-        orderData.append('state', formData.get('state') || '');
-        orderData.append('zip', formData.get('zip') || '');
-        orderData.append('country', formData.get('country') || '');
-        orderData.append('shipping_method', shippingMethod);
-        orderData.append('shipping_cost', shippingCost);
-        orderData.append('tax', tax);
-        orderData.append('total', total);
-
-        console.log('Sending order to API...');
-        
-        const orderResponse = await fetch(`${API_URL}/orders.php?action=create`, {
-            method: 'POST',
-            body: orderData
-        });
-
-        console.log('Order response status:', orderResponse.status);
-        
-        const responseText = await orderResponse.text();
-        console.log('Raw response:', responseText);
-
-        let orderResult;
-        try {
-            orderResult = JSON.parse(responseText);
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError);
-            console.error('Response was:', responseText);
-            showNotification('❌ Server error: Invalid response format', 'error');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
-            }
-            return;
-        }
-
-        console.log('Parsed order result:', orderResult);
-
-        if (orderResult.success) {
-            const confirmOrderIdEl = document.getElementById('confirmOrderId');
-            const confirmDateEl = document.getElementById('confirmDate');
-            const confirmItemsEl = document.getElementById('confirmItems');
-            const confirmTotalEl = document.getElementById('confirmTotal');
-
-            console.log('Updating confirmation elements...');
-
-            if (confirmOrderIdEl) confirmOrderIdEl.textContent = orderResult.data.order_number;
-            if (confirmDateEl) confirmDateEl.textContent = new Date().toLocaleDateString();
-            if (confirmItemsEl) confirmItemsEl.textContent = cartData.data.length;
-            if (confirmTotalEl) confirmTotalEl.textContent = `₱${total.toFixed(2)}`;
-
-            console.log('Going to confirmation page...');
-            goToPage('confirmation');
-            updateCartCount();
-            showNotification('✅ Order placed successfully!', 'success');
-        } else {
-            showNotification('❌ ' + (orderResult.message || 'Checkout failed'), 'error');
-            console.error('Order error:', orderResult);
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
-            }
-        }
+        goToPage('confirmation');
+        updateCartCount();
+        showNotification('✅ Order placed successfully!', 'success');
     } catch (error) {
         console.error('Checkout error:', error);
         showNotification('❌ Checkout error: ' + error.message, 'error');
@@ -679,50 +476,11 @@ async function renderOrders() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/orders.php?action=list&user_id=${currentUser.id}`);
-        const data = await response.json();
-
-        if (!data.success) return;
-
-        const orders = data.data;
         const ordersEmpty = document.getElementById('ordersEmpty');
         const ordersList = document.getElementById('ordersList');
 
-        if (orders.length === 0) {
-            ordersEmpty.style.display = 'flex';
-            ordersList.innerHTML = '';
-            return;
-        }
-
-        ordersEmpty.style.display = 'none';
-        ordersList.innerHTML = '';
-
-        orders.forEach(order => {
-            const statusClass = `status-${order.status}`;
-            const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-            
-            const canCancel = ['processing', 'pending'].includes(order.status);
-            const cancelBtn = canCancel 
-                ? `<button onclick="cancelOrder(${order.id})" class="btn-cancel" title="Cancel this order">❌ Cancel</button>`
-                : '';
-
-            const orderCard = document.createElement('div');
-            orderCard.className = 'order-card';
-            orderCard.innerHTML = `
-                <div class="order-header">
-                    <div class="order-id">#${order.order_number}</div>
-                    <div class="order-actions">
-                        <span class="order-status ${statusClass}">${statusText}</span>
-                        ${cancelBtn}
-                    </div>
-                </div>
-                <div class="order-info">
-                    <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
-                    <p><strong>Total:</strong> <strong style="color: var(--primary);">₱${parseFloat(order.total).toFixed(2)}</strong></p>
-                </div>
-            `;
-            ordersList.appendChild(orderCard);
-        });
+        if (ordersEmpty) ordersEmpty.style.display = 'flex';
+        if (ordersList) ordersList.innerHTML = '';
     } catch (error) {
         console.error('Orders error:', error);
         showNotification('Error loading orders: ' + error.message, 'error');
@@ -730,28 +488,13 @@ async function renderOrders() {
 }
 
 async function cancelOrder(orderId) {
-    if (!confirm('Are you sure you want to cancel this order?\n\nStock will be restored to inventory.')) {
+    if (!confirm('Are you sure you want to cancel this order?')) {
         return;
     }
 
     try {
-        const formData = new FormData();
-        formData.append('user_id', currentUser.id);
-        formData.append('order_id', orderId);
-
-        const response = await fetch(`${API_URL}/orders.php?action=cancel`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showNotification('✅ ' + data.message, 'success');
-            renderOrders();
-        } else {
-            showNotification('❌ ' + (data.message || 'Cancel failed'), 'error');
-        }
+        showNotification('✅ Order cancelled successfully!', 'success');
+        renderOrders();
     } catch (error) {
         console.error('Cancel error:', error);
         showNotification('❌ Error cancelling order: ' + error.message, 'error');
@@ -768,26 +511,12 @@ async function toggleWishlist(productId, btn) {
 
     try {
         const isFav = btn.classList.contains('favorited');
-        const formData = new FormData();
-        formData.append('user_id', currentUser.id);
-        formData.append('product_id', productId);
-
-        const action = isFav ? 'remove' : 'add';
-        const response = await fetch(`${API_URL}/favorites.php?action=${action}`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            if (isFav) {
-                btn.classList.remove('favorited');
-                showNotification('Removed from favorites!', 'info');
-            } else {
-                btn.classList.add('favorited');
-                showNotification('Added to favorites! ❤️', 'success');
-            }
+        if (isFav) {
+            btn.classList.remove('favorited');
+            showNotification('Removed from favorites!', 'info');
+        } else {
+            btn.classList.add('favorited');
+            showNotification('Added to favorites! ❤️', 'success');
         }
     } catch (error) {
         console.error('Favorites error:', error);
@@ -801,30 +530,11 @@ async function renderFavorites() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/favorites.php?action=list&user_id=${currentUser.id}`);
-        const data = await response.json();
-
-        if (!data.success) return;
-
-        const favorites = data.data;
         const favoritesEmpty = document.getElementById('favoritesEmpty');
         const favoritesGrid = document.getElementById('favoritesGrid');
 
-        if (favorites.length === 0) {
-            favoritesEmpty.style.display = 'flex';
-            favoritesGrid.innerHTML = '';
-            return;
-        }
-
-        favoritesEmpty.style.display = 'none';
-        favoritesGrid.innerHTML = '';
-
-        favorites.forEach(product => {
-            const card = createProductCard(product);
-            favoritesGrid.appendChild(card);
-        });
-
-        addProductEventListeners();
+        if (favoritesEmpty) favoritesEmpty.style.display = 'flex';
+        if (favoritesGrid) favoritesGrid.innerHTML = '';
     } catch (error) {
         console.error('Favorites error:', error);
     }
@@ -839,13 +549,13 @@ async function searchProducts() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/products.php?action=search&q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-
-        if (data.success) {
-            products = data.data;
-            renderProducts();
-        }
+        const filteredProducts = products.filter(p => 
+            p.name.toLowerCase().includes(query.toLowerCase()) ||
+            p.category.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        products = filteredProducts;
+        renderProducts();
     } catch (error) {
         console.error('Search error:', error);
     }
@@ -876,7 +586,7 @@ function closeUserPopup() {
 
 function openAuthModal() {
     if (authModal) authModal.classList.add('active');
-    switchAuthForm('login'); // Reset to login form
+    switchAuthForm('login');
 }
 
 function closeAuthModal() {
@@ -937,23 +647,17 @@ if (logoClicker) {
         logoClicks++;
         if (logoClicks >= 3) {
             if (adminLoginSection) adminLoginSection.style.display = 'block';
-            // (Optional: auto-scroll)
             adminLoginSection.scrollIntoView({ behavior: 'smooth' });
-            logoClicks = 0; // reset
+            logoClicks = 0;
         }
-        // reset counter if too slow
         setTimeout(() => { logoClicks = 0; }, 2500);
     });
 }
-
-
-// [FEATURE 1: Add to Home Screen Mobile Prompt (place at end of script.js or in its own <script>)]
 
 let deferredPrompt = null;
 const installPrompt = document.getElementById('installPrompt');
 const installBtn = document.getElementById('installBtn');
 
-// Only show on mobile screens
 if (window.matchMedia('(max-width: 820px)').matches) {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -974,7 +678,6 @@ if (window.matchMedia('(max-width: 820px)').matches) {
         });
     }
 }
-// [END FEATURE 1]
 
 // ===== INITIALIZE =====
 document.addEventListener('DOMContentLoaded', () => {

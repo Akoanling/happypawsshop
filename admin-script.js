@@ -1,8 +1,36 @@
-const API_URL = 'http://localhost/happy-paw-shop/api';
-
 let products = [];
 let filteredProducts = [];
 let currentFilter = 'all';
+
+// ===== INITIALIZE PRODUCTS FROM LOCALSTORAGE =====
+function initializeProducts() {
+    const stored = localStorage.getItem('happyPawShopProducts');
+    if (!stored) {
+        // Load default products from seed data
+        products = [
+            { "id": 1, "name": "Premium Dog Food", "category": "dogs", "price": 899.99, "rating": 5, "reviews": 120, "stock": 45, "discount": "10% Off", "image_url": "https://via.placeholder.com/200?text=Dog+Food" },
+            { "id": 2, "name": "Cat Litter Box", "category": "cats", "price": 1299.99, "rating": 4, "reviews": 85, "stock": 30, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Cat+Litter" },
+            { "id": 3, "name": "Bird Cage Deluxe", "category": "birds", "price": 2499.99, "rating": 5, "reviews": 45, "stock": 15, "discount": "15% Off", "image_url": "https://via.placeholder.com/200?text=Bird+Cage" },
+            { "id": 4, "name": "Aquarium Filter System", "category": "fish", "price": 3499.99, "rating": 5, "reviews": 95, "stock": 20, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Aquarium+Filter" },
+            { "id": 5, "name": "Hamster Habitat", "category": "small-pets", "price": 599.99, "rating": 4, "reviews": 60, "stock": 50, "discount": "5% Off", "image_url": "https://via.placeholder.com/200?text=Hamster+Habitat" },
+            { "id": 6, "name": "Reptile Heat Lamp", "category": "reptiles", "price": 799.99, "rating": 5, "reviews": 78, "stock": 25, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Heat+Lamp" },
+            { "id": 7, "name": "Dog Bed Comfort Deluxe", "category": "dogs", "price": 1499.99, "rating": 5, "reviews": 150, "stock": 60, "discount": "20% Off", "image_url": "https://via.placeholder.com/200?text=Dog+Bed" },
+            { "id": 8, "name": "Cat Scratch Pole", "category": "cats", "price": 699.99, "rating": 4, "reviews": 92, "stock": 40, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Scratch+Pole" },
+            { "id": 9, "name": "Bird Seed Mix Premium", "category": "birds", "price": 399.99, "rating": 5, "reviews": 110, "stock": 100, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Bird+Seed" },
+            { "id": 10, "name": "Fish Tank Decorations", "category": "fish", "price": 499.99, "rating": 4, "reviews": 70, "stock": 55, "discount": "10% Off", "image_url": "https://via.placeholder.com/200?text=Tank+Decor" },
+            { "id": 11, "name": "Small Pet Food Bundle", "category": "small-pets", "price": 799.99, "rating": 5, "reviews": 85, "stock": 75, "discount": "New", "image_url": "https://via.placeholder.com/200?text=Pet+Food" },
+            { "id": 12, "name": "Reptile Enclosure Large", "category": "reptiles", "price": 4999.99, "rating": 5, "reviews": 52, "stock": 12, "discount": "25% Off", "image_url": "https://via.placeholder.com/200?text=Enclosure" }
+        ];
+        saveProductsToStorage();
+    } else {
+        products = JSON.parse(stored);
+    }
+}
+
+// ===== SAVE PRODUCTS TO LOCALSTORAGE =====
+function saveProductsToStorage() {
+    localStorage.setItem('happyPawShopProducts', JSON.stringify(products));
+}
 
 // ===== MESSAGE =====
 function showMessage(msg, type = 'success') {
@@ -13,24 +41,14 @@ function showMessage(msg, type = 'success') {
 }
 
 // ===== LOAD PRODUCTS =====
-async function loadProducts() {
+function loadProducts() {
     try {
-        console.log('Loading products...');
-        const response = await fetch(`${API_URL}/products.php?action=list`);
-        const data = await response.json();
-        
-        console.log('API Response:', data);
-        
-        if (data.success && data.data) {
-            products = data.data;
-            console.log('Products loaded:', products);
-            filteredProducts = [...products];
-            updateStats();
-            displayLowStockAlert();
-            displayProducts();
-        } else {
-            showMessage('Error loading products', 'error');
-        }
+        console.log('Loading products from localStorage...');
+        filteredProducts = [...products];
+        updateStats();
+        displayLowStockAlert();
+        displayProducts();
+        console.log('Products loaded:', products);
     } catch (error) {
         console.error('Load error:', error);
         showMessage('Error loading products', 'error');
@@ -173,54 +191,56 @@ function displayProducts() {
 }
 
 // ===== ADD PRODUCT =====
-document.getElementById('productForm').addEventListener('submit', async (e) => {
+document.getElementById('productForm').addEventListener('submit', (e) => {
     e.preventDefault();
     
-    const formData = new FormData(document.getElementById('productForm'));
+    const name = document.getElementById('name').value;
+    const category = document.getElementById('category').value;
+    const price = parseFloat(document.getElementById('price').value);
+    const stock = parseInt(document.getElementById('stock').value);
+    const originalPrice = document.getElementById('originalPrice').value;
+    const discount = document.getElementById('discount').value;
+    const rating = parseFloat(document.getElementById('rating').value) || 0;
+    const reviews = parseInt(document.getElementById('reviews').value) || 0;
     
-    try {
-        const response = await fetch(`${API_URL}/products.php?action=add`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showMessage('✅ Product added successfully!', 'success');
-            document.getElementById('productForm').reset();
-            document.getElementById('imagePreview').style.display = 'none';
-            loadProducts();
-        } else {
-            showMessage('❌ ' + (data.message || 'Failed to add product'), 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage('❌ Error adding product', 'error');
+    // Get image URL or use placeholder
+    let imageUrl = 'https://via.placeholder.com/200?text=' + encodeURIComponent(name);
+    const imageFile = document.getElementById('image').files[0];
+    if (imageFile) {
+        imageUrl = URL.createObjectURL(imageFile);
     }
+    
+    const newProduct = {
+        id: Math.max(...products.map(p => p.id), 0) + 1,
+        name,
+        category,
+        price,
+        stock,
+        original_price: originalPrice || 0,
+        discount,
+        rating,
+        reviews,
+        image_url: imageUrl
+    };
+    
+    products.push(newProduct);
+    saveProductsToStorage();
+    
+    showMessage('✅ Product added successfully!', 'success');
+    document.getElementById('productForm').reset();
+    document.getElementById('imagePreview').style.display = 'none';
+    loadProducts();
 });
 
 // ===== DELETE PRODUCT =====
-window.deleteProduct = async function(id) {
+window.deleteProduct = function(id) {
     if (!confirm('⚠️ Are you sure? This cannot be undone.')) return;
 
-    try {
-        const response = await fetch(`${API_URL}/products.php?action=delete&id=${id}`, {
-            method: 'POST'
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showMessage('✅ Product deleted!', 'success');
-            loadProducts();
-        } else {
-            showMessage('❌ ' + (data.message || 'Failed to delete'), 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage('❌ Error deleting product', 'error');
-    }
+    products = products.filter(p => p.id !== id);
+    saveProductsToStorage();
+    
+    showMessage('✅ Product deleted!', 'success');
+    loadProducts();
 };
 
 // ===== OPEN EDIT MODAL =====
@@ -280,45 +300,33 @@ document.getElementById('editImage').addEventListener('change', function(e) {
 });
 
 // ===== EDIT PRODUCT =====
-document.getElementById('editForm').addEventListener('submit', async (e) => {
+document.getElementById('editForm').addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const id = document.getElementById('editId').value;
-    const formData = new FormData();
+    const id = parseInt(document.getElementById('editId').value);
+    const product = products.find(p => p.id === id);
     
-    formData.append('name', document.getElementById('editName').value);
-    formData.append('category', document.getElementById('editCategory').value);
-    formData.append('price', document.getElementById('editPrice').value);
-    formData.append('stock', document.getElementById('editStock').value);
-    formData.append('original_price', document.getElementById('editOriginalPrice').value);
-    formData.append('discount', document.getElementById('editDiscount').value);
-    formData.append('rating', document.getElementById('editRating').value);
-    formData.append('reviews', document.getElementById('editReviews').value);
+    if (!product) return;
+    
+    product.name = document.getElementById('editName').value;
+    product.category = document.getElementById('editCategory').value;
+    product.price = parseFloat(document.getElementById('editPrice').value);
+    product.stock = parseInt(document.getElementById('editStock').value);
+    product.original_price = document.getElementById('editOriginalPrice').value;
+    product.discount = document.getElementById('editDiscount').value;
+    product.rating = parseFloat(document.getElementById('editRating').value) || 0;
+    product.reviews = parseInt(document.getElementById('editReviews').value) || 0;
 
     const imageInput = document.getElementById('editImage');
     if (imageInput.files.length > 0) {
-        formData.append('image', imageInput.files[0]);
+        product.image_url = URL.createObjectURL(imageInput.files[0]);
     }
 
-    try {
-        const response = await fetch(`${API_URL}/products.php?action=edit&id=${id}`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showMessage('✅ Product updated successfully!', 'success');
-            closeEditModal();
-            loadProducts();
-        } else {
-            showMessage('❌ ' + (data.message || 'Failed to update'), 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage('❌ Error updating product', 'error');
-    }
+    saveProductsToStorage();
+    
+    showMessage('✅ Product updated successfully!', 'success');
+    closeEditModal();
+    loadProducts();
 });
 
 // ===== SEARCH =====
@@ -369,4 +377,5 @@ document.getElementById('editModal').addEventListener('click', (e) => {
 });
 
 // ===== INIT =====
+initializeProducts();
 loadProducts();

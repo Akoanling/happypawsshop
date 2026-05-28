@@ -1,8 +1,9 @@
-// API Base URL - Use static JSON file instead
+// API Base URL - Use static JSON file for GitHub Pages
 const API_URL = './products.json';
 
 // Products data (loaded from JSON)
 let products = [];
+let cart = []; // Local cart storage
 
 // Global State
 let currentUser = null;
@@ -25,6 +26,29 @@ const filterButtons = document.querySelectorAll('.filter-btn');
 const categoryCards = document.querySelectorAll('.category-card');
 const cartBtn = document.querySelector('.cart-btn');
 const checkoutForm = document.getElementById('checkoutForm');
+
+// ===== CART STORAGE FUNCTIONS =====
+function getCart() {
+    if (!currentUser) return [];
+    const savedCart = localStorage.getItem(`cart_${currentUser.id}`);
+    return savedCart ? JSON.parse(savedCart) : [];
+}
+
+function saveCart(cartData) {
+    if (!currentUser) return;
+    localStorage.setItem(`cart_${currentUser.id}`, JSON.stringify(cartData));
+}
+
+function getOrders() {
+    if (!currentUser) return [];
+    const savedOrders = localStorage.getItem(`orders_${currentUser.id}`);
+    return savedOrders ? JSON.parse(savedOrders) : [];
+}
+
+function saveOrders(ordersData) {
+    if (!currentUser) return;
+    localStorage.setItem(`orders_${currentUser.id}`, JSON.stringify(ordersData));
+}
 
 // ===== AUTH MODAL TAB SWITCHING =====
 function switchAuthForm(formType) {
@@ -119,9 +143,11 @@ async function loadProducts(category = 'all') {
             renderProducts();
         } else {
             console.error('API error:', data.message);
+            showNotification('Error loading products', 'error');
         }
     } catch (error) {
         console.error('Error loading products:', error);
+        showNotification('Failed to load products: ' + error.message, 'error');
     }
 }
 
@@ -170,7 +196,7 @@ function createProductCard(product) {
 
     // Show image if present
     const imageDisplay = product.image_url
-        ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;">`
+        ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;" onerror="this.src='https://via.placeholder.com/200?text=No+Image'">`
         : `<div style="font-size:3rem;display:flex;align-items:center;justify-content:center;height:150px;">🐾</div>`;
 
     // Build card
@@ -244,11 +270,7 @@ async function handleLogin(e) {
     }
 
     try {
-        const formData = new FormData();
-        formData.append('email', email);
-        formData.append('password', password);
-
-        // For GitHub Pages (no backend), just create a local user
+        // Create local user session
         currentUser = {
             id: 'user_' + Date.now(),
             email: email,
@@ -281,7 +303,7 @@ async function handleSignup(e) {
     }
 
     try {
-        // For GitHub Pages (no backend), just create a local user
+        // Create local user session
         currentUser = {
             id: 'user_' + Date.now(),
             email: email,
@@ -312,11 +334,11 @@ async function handleAdminLogin(e) {
         return;
     }
 
-    // For demo purposes - check for hardcoded admin credentials
+    // Check admin credentials
     if (email === 'admin@happypaw.com' && password === 'admin123') {
         localStorage.setItem('adminLoggedIn', 'true');
-        alert('Admin login would redirect to admin.html on a full backend setup.');
-        closeAuthModal();
+        localStorage.setItem('adminEmail', email);
+        window.location.href = 'admin.html';
     } else {
         alert('Invalid admin credentials');
     }
@@ -342,6 +364,23 @@ async function addToCart(productId) {
 
     try {
         const product = products.find(p => p.id === productId);
+        const cartItems = getCart();
+        
+        // Check if product already in cart
+        const existingItem = cartItems.find(item => item.product_id === productId);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cartItems.push({
+                product_id: productId,
+                name: product.name,
+                price: product.price,
+                image_url: product.image_url,
+                quantity: 1
+            });
+        }
+        
+        saveCart(cartItems);
         updateCartCount();
         showNotification(`${product.name} added to cart! 🛒`, 'success');
     } catch (error) {
@@ -353,6 +392,9 @@ async function removeFromCart(productId) {
     if (!currentUser) return;
 
     try {
+        let cartItems = getCart();
+        cartItems = cartItems.filter(item => item.product_id !== productId);
+        saveCart(cartItems);
         renderCart();
         updateCartCount();
     } catch (error) {
@@ -364,8 +406,18 @@ async function updateQuantity(productId, newQuantity) {
     if (!currentUser || newQuantity < 1) return;
 
     try {
-        renderCart();
-        updateCartCount();
+        const cartItems = getCart();
+        const item = cartItems.find(i => i.product_id === productId);
+        if (item) {
+            if (newQuantity === 0) {
+                removeFromCart(productId);
+            } else {
+                item.quantity = newQuantity;
+                saveCart(cartItems);
+                renderCart();
+                updateCartCount();
+            }
+        }
     } catch (error) {
         console.error('Update error:', error);
     }
@@ -378,7 +430,8 @@ async function updateCartCount() {
     }
 
     try {
-        document.querySelector('.cart-count').textContent = '0';
+        const cartItems = getCart();
+        document.querySelector('.cart-count').textContent = cartItems.length;
     } catch (error) {
         console.error('Cart count error:', error);
     }
@@ -392,12 +445,12 @@ async function renderCart() {
     }
 
     try {
-        const cart = [];
+        const cartItems = getCart();
         const cartEmpty = document.getElementById('cartEmpty');
         const cartItemsContainer = document.getElementById('cartItemsContainer');
         const cartSummary = document.getElementById('cartSummary');
 
-        if (cart.length === 0) {
+        if (cartItems.length === 0) {
             if (cartEmpty) cartEmpty.style.display = 'flex';
             if (cartItemsContainer) cartItemsContainer.innerHTML = '';
             if (cartSummary) cartSummary.style.display = 'none';
@@ -410,15 +463,47 @@ async function renderCart() {
 
         let subtotal = 0;
 
+        cartItems.forEach(item => {
+            const price = parseFloat(item.price) || 0;
+            const quantity = parseInt(item.quantity) || 1;
+            const itemTotal = price * quantity;
+            
+            subtotal += itemTotal;
+
+            const cartItemEl = document.createElement('div');
+            cartItemEl.className = 'cart-item';
+            cartItemEl.innerHTML = `
+                <div class="cart-item-image">${item.image_url ? `<img src="${item.image_url}" style="width:100%; height:100%; object-fit:cover;">` : '🐾'}</div>
+                <div class="cart-item-details">
+                    <h3>${item.name}</h3>
+                    <div class="cart-item-price">₱${price.toFixed(2)} each</div>
+                </div>
+                <div class="cart-item-quantity">
+                    <button onclick="updateQuantity(${item.product_id}, ${quantity - 1})">-</button>
+                    <input type="number" value="${quantity}" readonly>
+                    <button onclick="updateQuantity(${item.product_id}, ${quantity + 1})">+</button>
+                </div>
+                <div class="cart-item-total">₱${itemTotal.toFixed(2)}</div>
+                <button class="remove-btn" onclick="removeFromCart(${item.product_id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            if (cartItemsContainer) cartItemsContainer.appendChild(cartItemEl);
+        });
+
+        const tax = subtotal * 0.1;
+        const shipping = 5;
+        const total = subtotal + tax + shipping;
+
         const subtotalEl = document.getElementById('subtotal');
         const taxEl = document.getElementById('tax');
         const shippingEl = document.getElementById('shipping');
         const totalEl = document.getElementById('total');
 
-        if (subtotalEl) subtotalEl.textContent = `₱0.00`;
-        if (taxEl) taxEl.textContent = `₱0.00`;
-        if (shippingEl) shippingEl.textContent = `₱5.00`;
-        if (totalEl) totalEl.textContent = `₱0.00`;
+        if (subtotalEl) subtotalEl.textContent = `₱${subtotal.toFixed(2)}`;
+        if (taxEl) taxEl.textContent = `₱${tax.toFixed(2)}`;
+        if (shippingEl) shippingEl.textContent = `₱${shipping.toFixed(2)}`;
+        if (totalEl) totalEl.textContent = `₱${total.toFixed(2)}`;
 
     } catch (error) {
         console.error('Render cart error:', error);
@@ -444,15 +529,74 @@ async function handleCheckout(e) {
     }
 
     try {
-        const total = 99.99;
+        const cartItems = getCart();
+
+        if (!cartItems || cartItems.length === 0) {
+            showNotification('Your cart is empty!', 'error');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
+            }
+            return;
+        }
+
+        let subtotal = 0;
+        cartItems.forEach(item => {
+            const price = parseFloat(item.price) || 0;
+            const qty = parseInt(item.quantity) || 1;
+            subtotal += price * qty;
+        });
+
+        console.log('Subtotal:', subtotal);
+
+        const formData = new FormData(e.target);
+        const shippingMethod = formData.get('shipping') || 'standard';
+        
+        let shippingCost = 5;
+        if (shippingMethod === 'express') shippingCost = 15;
+        
+        const tax = subtotal * 0.1;
+        const total = subtotal + tax + shippingCost;
+
+        // Create order object
+        const order = {
+            id: 'ORD' + Date.now(),
+            order_number: 'ORD' + Date.now(),
+            user_id: currentUser.id,
+            items: cartItems,
+            first_name: formData.get('firstName') || 'Customer',
+            last_name: formData.get('lastName') || '',
+            email: formData.get('email') || currentUser.email,
+            phone: formData.get('phone') || '',
+            address: formData.get('address') || '',
+            city: formData.get('city') || '',
+            state: formData.get('state') || '',
+            zip: formData.get('zip') || '',
+            country: formData.get('country') || '',
+            shipping_method: shippingMethod,
+            shipping_cost: shippingCost,
+            tax: tax,
+            total: total,
+            status: 'processing',
+            created_at: new Date().toISOString()
+        };
+
+        // Save order
+        const orders = getOrders();
+        orders.push(order);
+        saveOrders(orders);
+
+        // Clear cart
+        saveCart([]);
+
         const confirmOrderIdEl = document.getElementById('confirmOrderId');
         const confirmDateEl = document.getElementById('confirmDate');
         const confirmItemsEl = document.getElementById('confirmItems');
         const confirmTotalEl = document.getElementById('confirmTotal');
 
-        if (confirmOrderIdEl) confirmOrderIdEl.textContent = 'ORD' + Date.now();
+        if (confirmOrderIdEl) confirmOrderIdEl.textContent = order.order_number;
         if (confirmDateEl) confirmDateEl.textContent = new Date().toLocaleDateString();
-        if (confirmItemsEl) confirmItemsEl.textContent = '1';
+        if (confirmItemsEl) confirmItemsEl.textContent = cartItems.length;
         if (confirmTotalEl) confirmTotalEl.textContent = `₱${total.toFixed(2)}`;
 
         goToPage('confirmation');
@@ -476,11 +620,46 @@ async function renderOrders() {
     }
 
     try {
+        const orders = getOrders();
         const ordersEmpty = document.getElementById('ordersEmpty');
         const ordersList = document.getElementById('ordersList');
 
-        if (ordersEmpty) ordersEmpty.style.display = 'flex';
+        if (orders.length === 0) {
+            if (ordersEmpty) ordersEmpty.style.display = 'flex';
+            if (ordersList) ordersList.innerHTML = '';
+            return;
+        }
+
+        if (ordersEmpty) ordersEmpty.style.display = 'none';
         if (ordersList) ordersList.innerHTML = '';
+
+        orders.forEach(order => {
+            const statusClass = `status-${order.status}`;
+            const statusText = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+            
+            const canCancel = ['processing', 'pending'].includes(order.status);
+            const cancelBtn = canCancel 
+                ? `<button onclick="cancelOrder('${order.id}')" class="btn-cancel" title="Cancel this order">❌ Cancel</button>`
+                : '';
+
+            const orderCard = document.createElement('div');
+            orderCard.className = 'order-card';
+            orderCard.innerHTML = `
+                <div class="order-header">
+                    <div class="order-id">#${order.order_number}</div>
+                    <div class="order-actions">
+                        <span class="order-status ${statusClass}">${statusText}</span>
+                        ${cancelBtn}
+                    </div>
+                </div>
+                <div class="order-info">
+                    <p><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                    <p><strong>Items:</strong> ${order.items.length}</p>
+                    <p><strong>Total:</strong> <strong style="color: var(--primary);">₱${parseFloat(order.total).toFixed(2)}</strong></p>
+                </div>
+            `;
+            if (ordersList) ordersList.appendChild(orderCard);
+        });
     } catch (error) {
         console.error('Orders error:', error);
         showNotification('Error loading orders: ' + error.message, 'error');
@@ -493,6 +672,14 @@ async function cancelOrder(orderId) {
     }
 
     try {
+        let orders = getOrders();
+        orders = orders.map(order => {
+            if (order.id === orderId) {
+                order.status = 'cancelled';
+            }
+            return order;
+        });
+        saveOrders(orders);
         showNotification('✅ Order cancelled successfully!', 'success');
         renderOrders();
     } catch (error) {
@@ -554,8 +741,10 @@ async function searchProducts() {
             p.category.toLowerCase().includes(query.toLowerCase())
         );
         
+        const tempProducts = [...products];
         products = filteredProducts;
         renderProducts();
+        products = tempProducts;
     } catch (error) {
         console.error('Search error:', error);
     }
